@@ -1,0 +1,1525 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<meta name="theme-color" content="#EFF4F0">
+<title>Kamar Akmal</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,600;12..96,700&family=Figtree:wght@400;500;600;700&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/mqtt@5/dist/mqtt.min.js"></script>
+<style>
+  /* =========================================================
+     TOKENS
+     ========================================================= */
+  :root {
+    color-scheme: light;
+    --outer: #E2E9E4;
+    --bg: #EFF4F0;
+    --card: #FFFFFF;
+    --card2: #F3F7F4;
+    --line: #E0E9E2;
+    --ink: #11201A;
+    --mute: #66746B;
+    --track: #D3DED6;
+
+    --accent: #2E9E5F;
+    --accent-ink: #1F7A4A;
+    --accent-soft: #E1F3E8;
+    --on-accent: #FFFFFF;
+    --hero: #1F7A4A;
+
+    --glow: #FFB020;
+    --glow-soft: #FFF0D2;
+    --glow-ink: #7A4E00;
+    --glow-on: #3A2600;
+
+    --nav: #10241A;
+    --nav-ink: #FFFFFF;
+    --ok: #2FB36B;
+    --warn: #B7791F;
+    --bad: #C93C2E;
+    --bad-soft: #FCE8E5;
+
+    --shadow: 0 1px 2px rgba(17,32,26,.04), 0 8px 24px rgba(17,32,26,.06);
+    --font-display: "Bricolage Grotesque", "Figtree", system-ui, sans-serif;
+    --font-body: "Figtree", -apple-system, "Segoe UI", Roboto, sans-serif;
+  }
+
+  :root[data-theme="dark"] {
+    color-scheme: dark;
+    --outer: #070B09;
+    --bg: #0C130F;
+    --card: #131C17;
+    --card2: #1A2620;
+    --line: #25332B;
+    --ink: #E8F1EB;
+    --mute: #8D9D93;
+    --track: #2B3A31;
+
+    --accent: #52C07C;
+    --accent-ink: #7FD6A0;
+    --accent-soft: #19291F;
+    --on-accent: #0A1C11;
+    --hero: #1F6B42;
+
+    --glow: #FFC24D;
+    --glow-soft: #33280F;
+    --glow-ink: #FFD27A;
+    --glow-on: #3A2600;
+
+    --nav: #1B2A22;
+    --nav-ink: #E8F1EB;
+    --ok: #52C07C;
+    --warn: #E0A257;
+    --bad: #FF8A7A;
+    --bad-soft: #3A1E1D;
+
+    --shadow: 0 1px 2px rgba(0,0,0,.4), 0 8px 24px rgba(0,0,0,.35);
+  }
+
+  * { box-sizing: border-box; }
+  [hidden] { display: none !important; }
+  html { -webkit-tap-highlight-color: transparent; background: var(--outer); }
+  body {
+    margin: 0; background: var(--outer); color: var(--ink);
+    font-family: var(--font-body); font-size: 15px; line-height: 1.4;
+    -webkit-font-smoothing: antialiased; min-height: 100dvh;
+  }
+  button, input, select { font: inherit; color: inherit; }
+  button { cursor: pointer; }
+  svg { display: block; }
+  :focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+
+  /* =========================================================
+     SHELL: selalu selebar HP, di tengah saat dibuka di PC
+     ========================================================= */
+  .shell {
+    position: relative; max-width: 430px; min-height: 100dvh; margin: 0 auto;
+    background: var(--bg); display: flex; flex-direction: column;
+    transition: background .3s ease;
+  }
+  @media (min-width: 520px) {
+    body { padding: 24px 0; }
+    .shell { min-height: calc(100dvh - 48px); border-radius: 36px; box-shadow: var(--shadow); }
+  }
+
+  main {
+    flex: 1; min-width: 0;
+    padding: calc(env(safe-area-inset-top, 0px) + 24px) 20px 20px;
+  }
+
+  /* =========================================================
+     NAV melayang (sticky di dasar shell)
+     ========================================================= */
+  .nav {
+    position: sticky; bottom: calc(16px + env(safe-area-inset-bottom, 0px));
+    margin: 0 16px calc(16px + env(safe-area-inset-bottom, 0px)); z-index: 20;
+    height: 64px; padding: 8px; border-radius: 32px;
+    background: var(--nav); color: var(--nav-ink);
+    display: flex; align-items: center; justify-content: space-between;
+    box-shadow: 0 10px 28px rgba(0,0,0,.22);
+  }
+  .nav-btn {
+    height: 48px; min-width: 48px; padding: 0; border: 0; border-radius: 24px;
+    background: transparent; color: var(--nav-ink); opacity: .7;
+    display: flex; align-items: center; justify-content: center; gap: 8px;
+    font-size: 14px; font-weight: 700; transition: background .2s, opacity .2s;
+  }
+  .nav-btn svg { width: 22px; height: 22px; }
+  .nav-btn .lbl { display: none; }
+  .nav-btn.active { background: var(--accent); color: var(--on-accent); opacity: 1; padding: 0 18px; }
+  .nav-btn.active .lbl { display: inline; }
+
+  /* =========================================================
+     COMMON
+     ========================================================= */
+  .tab { animation: fade .25s ease; }
+  .tab:not(.active) { display: none; }
+  @keyframes fade { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; transform: none; } }
+  @keyframes spin { to { transform: rotate(360deg); } }
+  @media (prefers-reduced-motion: reduce) { .tab { animation: none; } .spin svg { animation: none !important; } }
+
+  .stack { display: flex; flex-direction: column; gap: 14px; }
+  #tab-home { gap: 18px; }
+  .head { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 4px; }
+  .head h1 { margin: 0; font-family: var(--font-display); font-size: 28px; font-weight: 700; letter-spacing: -.02em; line-height: 1.1; }
+  .head .sub { font-size: 13px; color: var(--mute); margin-top: 2px; }
+  .head .hi { font-size: 14px; color: var(--mute); white-space: nowrap; }
+  .head > div:first-child { min-width: 0; }
+  .head .pill { min-width: 0; flex-shrink: 1; }
+  .head .pill > span:last-child { overflow: hidden; text-overflow: ellipsis; }
+  .head .pill .d { flex-shrink: 0; }
+
+  .card { background: var(--card); border-radius: 24px; padding: 16px; }
+  .card-title { font-size: 15.5px; font-weight: 700; }
+  .card-row { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+  .col { display: flex; flex-direction: column; gap: 14px; }
+  .mute { color: var(--mute); }
+  .num { font-variant-numeric: tabular-nums; }
+  .note { font-size: 13px; color: var(--mute); line-height: 1.5; margin: 0; }
+
+  .pill {
+    display: inline-flex; align-items: center; gap: 7px; height: 40px; padding: 0 14px;
+    border-radius: 20px; background: var(--card); font-size: 13px; font-weight: 600; white-space: nowrap;
+  }
+  .pill .d { width: 8px; height: 8px; border-radius: 50%; background: var(--mute); }
+  .pill.ok .d { background: var(--ok); }
+  .pill.wait .d { background: var(--warn); }
+  .pill.err .d { background: var(--bad); }
+
+  .icon-btn { width: 40px; height: 40px; border: 0; border-radius: 50%; background: var(--card); display: grid; place-items: center; padding: 0; }
+  .icon-btn svg { width: 18px; height: 18px; }
+
+  .btn {
+    height: 46px; padding: 0 20px; border: 0; border-radius: 23px;
+    background: var(--card2); color: var(--ink); font-size: 14.5px; font-weight: 700;
+    transition: transform .08s ease, background .2s;
+  }
+  .btn:active { transform: scale(.97); }
+  .btn:disabled { opacity: .6; cursor: default; }
+  .btn.primary { background: var(--accent); color: var(--on-accent); }
+  .btn.soft { background: var(--accent-soft); color: var(--accent-ink); }
+  .btn.danger { background: var(--bad-soft); color: var(--bad); }
+  .btn.sm { height: 36px; padding: 0 16px; font-size: 13.5px; border-radius: 18px; }
+  .btn.block { width: 100%; }
+  .btn-row { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+
+  /* switch */
+  .sw { position: relative; width: 44px; height: 26px; flex-shrink: 0; }
+  .sw input { position: absolute; inset: 0; margin: 0; opacity: 0; cursor: pointer; z-index: 1; }
+  .sw span { position: absolute; inset: 0; border-radius: 13px; background: var(--track); transition: background .2s; }
+  .sw span::after {
+    content: ""; position: absolute; top: 3px; left: 3px; width: 20px; height: 20px; border-radius: 50%;
+    background: #fff; box-shadow: 0 1px 3px rgba(0,0,0,.2); transition: transform .2s ease;
+  }
+  .sw input:checked + span { background: var(--accent); }
+  .sw input:checked + span::after { transform: translateX(18px); }
+  .sw input:focus-visible + span { outline: 2px solid var(--accent); outline-offset: 2px; }
+  .sw.lg { width: 52px; height: 30px; }
+  .sw.lg span { border-radius: 15px; }
+  .sw.lg span::after { width: 24px; height: 24px; }
+  .sw.lg input:checked + span::after { transform: translateX(22px); }
+
+  /* range */
+  .range { --p: 50%; --fill: var(--accent); -webkit-appearance: none; appearance: none; width: 100%; height: 28px; background: transparent; margin: 0; }
+  .range::-webkit-slider-runnable-track { height: 10px; border-radius: 5px; background: linear-gradient(to right, var(--fill) 0 var(--p), var(--track) var(--p) 100%); }
+  .range::-moz-range-track { height: 10px; border-radius: 5px; background: var(--track); }
+  .range::-moz-range-progress { height: 10px; border-radius: 5px; background: var(--fill); }
+  .range::-webkit-slider-thumb { -webkit-appearance: none; width: 28px; height: 28px; margin-top: -9px; border-radius: 50%; background: #fff; border: 4px solid var(--fill); box-shadow: 0 1px 4px rgba(0,0,0,.2); }
+  .range::-moz-range-thumb { width: 20px; height: 20px; border-radius: 50%; background: #fff; border: 4px solid var(--fill); }
+  .range.glow { --fill: var(--glow); }
+
+  .slider-head { display: flex; justify-content: space-between; align-items: baseline; font-size: 14px; }
+  .slider-head label { font-weight: 600; color: var(--mute); }
+  .slider-head .v { font-weight: 700; font-variant-numeric: tabular-nums; }
+
+  /* fields */
+  /* field = kotak abu dengan label kecil di dalam, seperti desain */
+  .field { min-width: 0; border-radius: 16px; background: var(--card2); padding: 8px 14px; transition: box-shadow .15s; }
+  .field:focus-within { box-shadow: 0 0 0 2px var(--accent); }
+  .field label { display: block; font-size: 12px; color: var(--mute); line-height: 1.3; }
+  .field input, .field select {
+    display: block; width: 100%; min-width: 0; border: 0; border-radius: 0; background: transparent;
+    padding: 0; font-size: 15.5px; font-weight: 700; outline: none;
+  }
+  .field input[type=number], .field input[type=time] { font-family: var(--font-display); font-size: 22px; font-weight: 700; font-variant-numeric: tabular-nums; line-height: 1.25; }
+  .field input[type=time]::-webkit-calendar-picker-indicator { opacity: .5; margin-left: 2px; }
+  .fields { display: grid; gap: 10px; }
+  .fields.two { grid-template-columns: 1fr 1fr; }
+
+  .seg { display: grid; grid-template-columns: repeat(3, 1fr); gap: 4px; padding: 4px; border-radius: 18px; background: var(--card2); }
+  .seg button { height: 40px; border: 0; border-radius: 14px; background: transparent; font-size: 13.5px; font-weight: 700; color: var(--mute); }
+  .seg button.active { background: var(--card); color: var(--ink); box-shadow: var(--shadow); }
+
+  .ic-tile { width: 44px; height: 44px; border-radius: 15px; background: var(--card2); color: var(--mute); display: grid; place-items: center; flex-shrink: 0; transition: background .25s, color .25s; }
+  .ic-tile svg { width: 22px; height: 22px; }
+  .ic-tile.sm { width: 40px; height: 40px; border-radius: 14px; }
+  .ic-tile.sm svg { width: 20px; height: 20px; }
+
+  /* =========================================================
+     BERANDA
+     ========================================================= */
+  .hero {
+    position: relative; overflow: hidden; border-radius: 28px; background: var(--hero); color: #fff;
+    padding: 20px; display: flex; flex-direction: column; gap: 18px;
+  }
+  .hero::before { content: ""; position: absolute; right: -34px; top: -34px; width: 170px; height: 170px; border-radius: 50%; background: rgba(255,255,255,.08); }
+  .hero > * { position: relative; }
+  .hero .bulb { position: absolute; right: 8px; top: 8px; width: 86px; height: 86px; border-radius: 50%; background: rgba(255,255,255,.14); color: rgba(255,255,255,.5); display: grid; place-items: center; transition: background .3s, color .3s; }
+  .hero .bulb.on { background: var(--glow); color: var(--glow-on); }
+  .hero .bulb svg { width: 40px; height: 40px; }
+  .hero .lbl { font-size: 14px; opacity: .8; }
+  .hero .count { padding-right: 88px; }
+  .hero .big { display: flex; align-items: baseline; gap: 8px; }
+  .hero .big b { font-family: var(--font-display); font-size: 64px; font-weight: 700; letter-spacing: -.04em; line-height: 1; font-variant-numeric: tabular-nums; }
+  .hero .big span { font-size: 16px; font-weight: 500; opacity: .9; }
+  .hero .sched { display: flex; align-items: flex-start; gap: 8px; font-size: 13.5px; font-weight: 600; }
+  .hero .sched > svg { width: 16px; height: 16px; margin-top: 2px; flex-shrink: 0; }
+  .hero .sched .lines { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 3px; }
+  .hero .sched .ln { display: flex; justify-content: space-between; gap: 12px; font-variant-numeric: tabular-nums; }
+  .hero .btn { background: #fff; color: #0F1F17; }
+  .hero .btn.ghost { background: rgba(255,255,255,.2); color: #fff; }
+
+  .chips { display: flex; gap: 8px; overflow-x: auto; scrollbar-width: none; }
+  .chips::-webkit-scrollbar { display: none; }
+  .chip { height: 38px; padding: 0 16px; border: 0; border-radius: 19px; background: var(--card); color: var(--ink); font-size: 14px; font-weight: 600; white-space: nowrap; }
+  .chip.active { background: var(--ink); color: var(--bg); }
+
+  .tiles { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
+  .tile {
+    border-radius: 24px; background: var(--card); padding: 14px; min-height: 132px;
+    display: flex; flex-direction: column; justify-content: space-between; gap: 10px;
+    transition: background .25s;
+  }
+  .tile-top { display: flex; align-items: flex-start; justify-content: space-between; }
+  .tile .tn { font-size: 15.5px; font-weight: 700; }
+  .tile .tst { font-size: 13px; color: var(--mute); font-weight: 500; font-variant-numeric: tabular-nums; }
+  .tile .bar { margin-top: 6px; height: 6px; border-radius: 3px; background: var(--track); overflow: hidden; }
+  .tile .bar i { display: block; height: 100%; border-radius: 3px; background: var(--glow); width: 100%; transform: scaleX(0); transform-origin: left; transition: transform .3s; }
+  .tile .bar.led i { transform: none; }
+  .tile.on.glow { background: var(--glow-soft); }
+  .tile.on.glow .ic-tile { background: var(--glow); color: var(--glow-on); }
+  .tile.on.glow .tst { color: var(--glow-ink); }
+  .tile.on.acc { background: var(--accent-soft); }
+  .tile.on.acc .ic-tile { background: var(--accent); color: var(--on-accent); }
+  .tile.on.acc .tst { color: var(--accent-ink); }
+  .tile.wide { grid-column: 1 / -1; min-height: 0; flex-direction: row; align-items: center; justify-content: flex-start; gap: 12px; }
+  .tile.wide .tb { flex: 1; min-width: 0; }
+  .tile.on .spin svg { animation: spin 1.4s linear infinite; }
+
+  /* =========================================================
+     LAMPU
+     ========================================================= */
+  .relay-row { display: flex; align-items: center; gap: 12px; padding: 12px 0; }
+  .relay-row + .relay-row { border-top: 1px solid var(--line); }
+  .relay-row .tb { flex: 1; min-width: 0; }
+  .relay-row .rt { font-size: 15.5px; font-weight: 700; }
+  .relay-row .rs { font-size: 12.5px; color: var(--mute); }
+  .relay-row.on .ic-tile { background: var(--glow); color: var(--glow-on); }
+
+  .dim-big { font-family: var(--font-display); font-size: 52px; font-weight: 700; letter-spacing: -.03em; line-height: 1; font-variant-numeric: tabular-nums; }
+  .dim-big small { font-size: 22px; color: var(--mute); margin-left: 2px; font-weight: 700; }
+  .dirty-badge { display: inline-flex; align-items: center; gap: 6px; height: 26px; padding: 0 10px; border-radius: 13px; background: var(--glow-soft); color: var(--glow-ink); font-size: 12.5px; font-weight: 700; white-space: nowrap; }
+  .dirty-badge::before { content: ""; width: 6px; height: 6px; border-radius: 50%; background: var(--glow); }
+  .presets { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 8px; }
+  .presets button { height: 38px; border: 0; border-radius: 12px; background: var(--card2); color: var(--mute); font-size: 13.5px; font-weight: 700; }
+  .presets button.active { background: var(--glow-soft); color: var(--glow-ink); }
+  .dim-save { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding-top: 12px; border-top: 1px solid var(--line); }
+  .dim-saved { font-size: 13px; color: var(--mute); }
+  .dim-saved strong { display: block; font-size: 16px; color: var(--ink); font-variant-numeric: tabular-nums; }
+  .dim-save .btn { height: 44px; min-width: 112px; }
+
+  /* jadwal: satu kartu per lampu, jam besar */
+  .sched { gap: 16px; }
+  .sched-head { display: flex; align-items: center; gap: 12px; }
+  .sched-head .tb { flex: 1; min-width: 0; }
+  .sched-head .rs { font-size: 12.5px; color: var(--mute); }
+  .sched-head .rs b { color: var(--ink); }
+  .time-pair { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
+  .time-tile { min-width: 0; border-radius: 20px; background: var(--card2); padding: 12px 14px 12px; display: flex; flex-direction: column; gap: 6px; transition: box-shadow .15s; }
+  .time-tile:focus-within { box-shadow: 0 0 0 2px var(--accent); }
+  .time-tile label { font-size: 13px; font-weight: 600; color: var(--mute); }
+  .time-tile input[type=time] {
+    width: 100%; min-width: 0; border: 0; background: transparent; padding: 0; outline: none;
+    font-family: var(--font-display); font-size: 29px; font-weight: 700; letter-spacing: -.02em; line-height: 1.2;
+    font-variant-numeric: tabular-nums; color: var(--ink); -webkit-appearance: none; appearance: none;
+  }
+  .time-tile input[type=time]::-webkit-calendar-picker-indicator { display: none; }
+  .nudge { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; margin-top: 4px; }
+  .nudge button { height: 40px; border: 0; border-radius: 12px; background: var(--card); color: var(--ink); font-size: 14px; font-weight: 700; font-variant-numeric: tabular-nums; transition: transform .08s; }
+  .nudge button:active { transform: scale(.95); }
+  .sched-foot { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding-top: 14px; border-top: 1px solid var(--line); }
+  .sched-foot .dur { font-size: 13px; color: var(--mute); line-height: 1.4; min-width: 0; }
+  .sched-foot .btn { flex-shrink: 0; min-width: 132px; }
+  .hero .sched { cursor: pointer; }
+
+  /* =========================================================
+     LED
+     ========================================================= */
+  .led-preview { height: 16px; border-radius: 8px; background: var(--track); transition: background .3s ease, opacity .3s ease; }
+  .led-preview.off { opacity: .35; }
+  .colors { display: flex; flex-wrap: wrap; gap: 12px; align-items: center; }
+  .cdot { width: 36px; height: 36px; border-radius: 50%; border: 1px solid var(--line); padding: 0; }
+  .cdot.active { box-shadow: 0 0 0 3px var(--card), 0 0 0 5px var(--accent); }
+  .cpick { position: relative; width: 36px; height: 36px; border-radius: 50%; border: 1.5px dashed var(--mute); display: grid; place-items: center; color: var(--mute); overflow: hidden; }
+  .cpick svg { width: 16px; height: 16px; pointer-events: none; }
+  .cpick input { position: absolute; inset: -6px; opacity: 0; cursor: pointer; width: 60px; height: 60px; border: 0; padding: 0; }
+  .fx { display: flex; flex-wrap: wrap; gap: 8px; }
+  .fx button { height: 38px; padding: 0 14px; border: 0; border-radius: 19px; background: var(--card2); color: var(--ink); font-size: 13.5px; font-weight: 600; }
+  .fx button.active { background: var(--accent); color: var(--on-accent); font-weight: 700; }
+  .count-row { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+  .wiz { padding: 16px; border-radius: 20px; background: var(--card2); }
+  .wiz h4 { margin: 0 0 6px; font-size: 15px; }
+  .wiz p { margin: 0 0 12px; font-size: 13px; color: var(--mute); line-height: 1.5; }
+  .wiz .pos { font-family: var(--font-display); font-size: 40px; font-weight: 700; font-variant-numeric: tabular-nums; margin-bottom: 8px; }
+  .stepper { display: grid; grid-template-columns: repeat(2, 1fr) auto repeat(2, 1fr); gap: 6px; align-items: center; margin-bottom: 12px; }
+  .stepper .cc { min-width: 56px; text-align: center; font-family: var(--font-display); font-size: 24px; font-weight: 700; font-variant-numeric: tabular-nums; }
+  .stepper .btn { padding: 0; background: var(--card); }
+
+  /* =========================================================
+     SETELAN
+     ========================================================= */
+  .list { background: var(--card); border-radius: 24px; padding: 4px 16px; }
+  .acc + .acc { border-top: 1px solid var(--line); }
+  .acc summary { list-style: none; display: flex; align-items: center; gap: 12px; padding: 14px 0; cursor: pointer; }
+  .acc summary::-webkit-details-marker { display: none; }
+  .acc summary .tb { flex: 1; min-width: 0; }
+  .acc summary .rt { font-size: 15.5px; font-weight: 700; }
+  .acc summary .rs { font-size: 12.5px; color: var(--mute); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .acc summary .chev { width: 18px; height: 18px; color: var(--mute); transition: transform .2s; }
+  .acc[open] summary .chev { transform: rotate(90deg); }
+  .acc .body { padding: 0 0 16px; display: flex; flex-direction: column; gap: 12px; }
+  .acc .ic-tile { background: var(--accent-soft); color: var(--accent-ink); }
+
+  /* =========================================================
+     TOAST
+     ========================================================= */
+  .toast {
+    position: fixed; left: 50%; z-index: 50;
+    bottom: calc(96px + env(safe-area-inset-bottom, 0px));
+    transform: translateX(-50%) translateY(12px); opacity: 0; pointer-events: none;
+    background: var(--ink); color: var(--bg); padding: 11px 18px; border-radius: 999px;
+    font-size: 14px; font-weight: 600; max-width: min(90vw, 390px); text-align: center;
+    transition: opacity .2s ease, transform .2s ease; box-shadow: var(--shadow);
+  }
+  .toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+</style>
+</head>
+<body>
+
+<!-- ============ IKON ============ -->
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <defs>
+    <symbol id="i-home" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M3 10.5 12 3l9 7.5"/><path d="M5 9.5V20a1 1 0 0 0 1 1h4v-6h4v6h4a1 1 0 0 0 1-1V9.5"/></symbol>
+    <symbol id="i-bulb" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18h6M10 21h4"/><path d="M12 3a6 6 0 0 0-3.6 10.8c.6.5 1 1.2 1.1 2V16h5v-.2c.1-.8.5-1.5 1.1-2A6 6 0 0 0 12 3Z"/></symbol>
+    <symbol id="i-sun" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round"><circle cx="12" cy="12" r="4"/><path d="M12 2.5v2M12 19.5v2M4.2 4.2l1.4 1.4M18.4 18.4l1.4 1.4M2.5 12h2M19.5 12h2M4.2 19.8l1.4-1.4M18.4 5.6l1.4-1.4"/></symbol>
+    <symbol id="i-moon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M20 14.5A8.5 8.5 0 1 1 9.5 4a6.8 6.8 0 0 0 10.5 10.5Z"/></symbol>
+    <symbol id="i-strip" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><rect x="2.5" y="9" width="19" height="6" rx="3"/><circle cx="7" cy="12" r=".9" fill="currentColor"/><circle cx="12" cy="12" r=".9" fill="currentColor"/><circle cx="17" cy="12" r=".9" fill="currentColor"/></symbol>
+    <symbol id="i-fan" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M12 12c0-3 1-7 4-7 2 0 3 1.5 3 3 0 3-4 4-7 4Z"/><path d="M12 12c3 0 7 1 7 4 0 2-1.5 3-3 3-3 0-4-4-4-7Z"/><path d="M12 12c0 3-1 7-4 7-2 0-3-1.5-3-3 0-3 4-4 7-4Z"/><path d="M12 12c-3 0-7-1-7-4 0-2 1.5-3 3-3 3 0 4 4 4 7Z"/></symbol>
+    <symbol id="i-gear" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3M4.9 4.9l2.1 2.1M17 17l2.1 2.1M4.9 19.1 7 17M17 7l2.1-2.1"/></symbol>
+    <symbol id="i-clock" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></symbol>
+    <symbol id="i-plus" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></symbol>
+    <symbol id="i-chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m9 6 6 6-6 6"/></symbol>
+    <symbol id="i-chip" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><rect x="6" y="6" width="12" height="12" rx="2"/><path d="M9 2v4M15 2v4M9 18v4M15 18v4M2 9h4M2 15h4M18 9h4M18 15h4"/></symbol>
+    <symbol id="i-tag" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12V4a1 1 0 0 1 1-1h8l9 9-9 9-9-9Z"/><circle cx="8" cy="8" r="1.2" fill="currentColor"/></symbol>
+  </defs>
+</svg>
+
+<div class="shell">
+  <main>
+
+    <!-- =========================================================
+         TAB: BERANDA
+         ========================================================= -->
+    <section class="tab stack" id="tab-home">
+      <div class="head">
+        <div>
+          <div class="hi" id="greeting">Selamat datang</div>
+          <h1 id="userName">Akmal</h1>
+        </div>
+        <div style="display:flex;gap:8px;align-items:center">
+          <span class="pill" id="connPill"><span class="d"></span><span id="connText">Menyambungkan…</span></span>
+          <button class="icon-btn" id="themeQuick" aria-label="Ganti tema"><svg><use href="#i-moon"/></svg></button>
+        </div>
+      </div>
+
+      <div class="hero">
+        <div class="bulb"><svg><use href="#i-bulb"/></svg></div>
+        <div class="count">
+          <div class="lbl" id="heroRoom">Kamar Akmal</div>
+          <div class="big"><b id="heroOn">0</b><span>dari 5 perangkat menyala</span></div>
+        </div>
+        <div class="sched">
+          <svg><use href="#i-clock"/></svg>
+          <div class="lines">
+            <div class="ln"><span data-name="r1">Lampu utama</span><span id="hs1">—</span></div>
+            <div class="ln"><span data-name="r2">Lampu 2</span><span id="hs2">—</span></div>
+          </div>
+        </div>
+        <div class="btn-row">
+          <button class="btn" id="allOn">Semua nyala</button>
+          <button class="btn ghost" id="allOff">Semua mati</button>
+        </div>
+      </div>
+
+      <div class="chips" id="chips" role="group" aria-label="Filter perangkat">
+        <button class="chip active" data-f="all">Semua</button>
+        <button class="chip" data-f="lamp">Lampu</button>
+        <button class="chip" data-f="led">LED</button>
+        <button class="chip" data-f="fan">Kipas</button>
+      </div>
+
+      <div class="tiles">
+        <div class="tile glow" id="tileR1" data-cat="lamp">
+          <div class="tile-top"><span class="ic-tile"><svg><use href="#i-bulb"/></svg></span><label class="sw"><input type="checkbox" id="swR1Tile" aria-label="Relay 1"><span></span></label></div>
+          <div><div class="tn" data-name="r1">Lampu utama</div><div class="tst" id="stR1">—</div></div>
+        </div>
+        <div class="tile glow" id="tileR2" data-cat="lamp">
+          <div class="tile-top"><span class="ic-tile"><svg><use href="#i-bulb"/></svg></span><label class="sw"><input type="checkbox" id="swR2Tile" aria-label="Relay 2"><span></span></label></div>
+          <div><div class="tn" data-name="r2">Lampu 2</div><div class="tst" id="stR2">—</div></div>
+        </div>
+        <div class="tile glow" id="tilePwm" data-cat="lamp">
+          <div class="tile-top"><span class="ic-tile"><svg><use href="#i-sun"/></svg></span><label class="sw"><input type="checkbox" id="swPwmTile" aria-label="Dimmer"><span></span></label></div>
+          <div>
+            <div style="display:flex;justify-content:space-between;align-items:baseline"><span class="tn" data-name="pwm">Dimmer</span><span class="tst" id="stPwm" style="font-weight:700">—</span></div>
+            <div class="bar"><i id="pwmBar"></i></div>
+          </div>
+        </div>
+        <div class="tile acc" id="tileLed" data-cat="led">
+          <div class="tile-top"><span class="ic-tile"><svg><use href="#i-strip"/></svg></span><label class="sw"><input type="checkbox" id="swLedTile" aria-label="LED strip"><span></span></label></div>
+          <div>
+            <div class="tn" data-name="led">LED strip</div>
+            <div class="tst" id="stLed">—</div>
+            <div class="bar led"><i id="ledBar"></i></div>
+          </div>
+        </div>
+        <div class="tile acc wide" id="tileFan" data-cat="fan">
+          <span class="ic-tile spin"><svg><use href="#i-fan"/></svg></span>
+          <div class="tb"><div class="tn" data-name="fan">Kipas</div><div class="tst" id="stFan">—</div></div>
+          <label class="sw"><input type="checkbox" id="swFanTile" aria-label="Kipas"><span></span></label>
+        </div>
+      </div>
+    </section>
+
+    <!-- =========================================================
+         TAB: LAMPU
+         ========================================================= -->
+    <section class="tab stack" id="tab-lamp">
+      <div class="head">
+        <div>
+          <h1>Lampu</h1>
+          <div class="sub" id="lampSub">Menunggu data perangkat</div>
+        </div>
+        <span class="pill" id="lampAvail"><span class="d"></span><span id="lampAvailText">—</span></span>
+      </div>
+
+      <div class="card" style="padding:6px 16px">
+        <div class="relay-row" id="rowR1">
+          <span class="ic-tile sm"><svg><use href="#i-bulb"/></svg></span>
+          <div class="tb"><div class="rt" data-name="r1">Lampu utama</div><div class="rs">Relay IN1 · GPIO33</div></div>
+          <label class="sw"><input type="checkbox" id="swR1" aria-label="Relay 1"><span></span></label>
+        </div>
+        <div class="relay-row" id="rowR2">
+          <span class="ic-tile sm"><svg><use href="#i-bulb"/></svg></span>
+          <div class="tb"><div class="rt" data-name="r2">Lampu 2</div><div class="rs">Relay IN2 · GPIO25</div></div>
+          <label class="sw"><input type="checkbox" id="swR2" aria-label="Relay 2"><span></span></label>
+        </div>
+      </div>
+
+      <div class="card col">
+        <div class="card-row">
+          <span class="card-title" data-name="pwm">Dimmer</span>
+          <span class="dirty-badge" id="pwmDirty" hidden>Belum disimpan</span>
+        </div>
+        <div class="dim-big" id="pwmBig">0<small>%</small></div>
+        <input type="range" class="range glow" id="pwmRange" min="0" max="100" value="0" aria-label="Kecerahan dimmer">
+        <div class="presets" id="pwmPresets">
+          <button data-v="0">Mati</button><button data-v="25">25</button><button data-v="50">50</button><button data-v="75">75</button><button data-v="100">100</button>
+        </div>
+        <div class="dim-save">
+          <div class="dim-saved">Tersimpan di perangkat<strong id="pwmSavedVal">—</strong></div>
+          <button class="btn" id="pwmSave">Simpan</button>
+        </div>
+      </div>
+
+      <section class="card col sched" id="schedCard1">
+        <div class="sched-head">
+          <span class="ic-tile sm"><svg><use href="#i-clock"/></svg></span>
+          <div class="tb"><div class="card-title">Jadwal <span data-name="r1">Lampu utama</span></div><div class="rs">Aktif di perangkat: <b class="num" id="schedCurrent">—</b></div></div>
+          <span class="dirty-badge" id="schedDirty1" hidden>Belum disimpan</span>
+        </div>
+        <div class="time-pair">
+          <div class="time-tile">
+            <label for="onTime">Nyala</label>
+            <input type="time" id="onTime" value="18:00">
+            <div class="nudge"><button type="button" data-t="onTime" data-d="-15" aria-label="Nyala 15 menit lebih awal">−15</button><button type="button" data-t="onTime" data-d="15" aria-label="Nyala 15 menit lebih lambat">+15</button></div>
+          </div>
+          <div class="time-tile">
+            <label for="offTime">Mati</label>
+            <input type="time" id="offTime" value="23:00">
+            <div class="nudge"><button type="button" data-t="offTime" data-d="-15" aria-label="Mati 15 menit lebih awal">−15</button><button type="button" data-t="offTime" data-d="15" aria-label="Mati 15 menit lebih lambat">+15</button></div>
+          </div>
+        </div>
+        <div class="sched-foot">
+          <span class="dur" id="dur1">—</span>
+          <button class="btn primary" id="saveSched1">Simpan jadwal</button>
+        </div>
+      </section>
+
+      <section class="card col sched" id="schedCard2">
+        <div class="sched-head">
+          <span class="ic-tile sm"><svg><use href="#i-clock"/></svg></span>
+          <div class="tb"><div class="card-title">Jadwal <span data-name="r2">Lampu 2</span></div><div class="rs">Aktif di perangkat: <b class="num" id="schedCurrent2">—</b></div></div>
+          <span class="dirty-badge" id="schedDirty2" hidden>Belum disimpan</span>
+        </div>
+        <div class="time-pair">
+          <div class="time-tile">
+            <label for="onTime2">Nyala</label>
+            <input type="time" id="onTime2" value="18:00">
+            <div class="nudge"><button type="button" data-t="onTime2" data-d="-15" aria-label="Nyala 15 menit lebih awal">−15</button><button type="button" data-t="onTime2" data-d="15" aria-label="Nyala 15 menit lebih lambat">+15</button></div>
+          </div>
+          <div class="time-tile">
+            <label for="offTime2">Mati</label>
+            <input type="time" id="offTime2" value="23:00">
+            <div class="nudge"><button type="button" data-t="offTime2" data-d="-15" aria-label="Mati 15 menit lebih awal">−15</button><button type="button" data-t="offTime2" data-d="15" aria-label="Mati 15 menit lebih lambat">+15</button></div>
+          </div>
+        </div>
+        <button class="btn soft block" id="copySched">Samakan dengan <span data-name="r1">Lampu utama</span></button>
+        <div class="sched-foot">
+          <span class="dur" id="dur2">—</span>
+          <button class="btn primary" id="saveSched2">Simpan jadwal</button>
+        </div>
+      </section>
+
+      <div class="card col">
+        <p class="note">Firmware <span id="fwVersion">—</span> · jam perangkat <span class="num" id="devTime">—</span> · update <span class="num" id="lampUpdated">—</span></p>
+        <button class="btn block" id="lampStatus">Cek status terkini</button>
+      </div>
+    </section>
+
+    <!-- =========================================================
+         TAB: LED STRIP
+         ========================================================= -->
+    <section class="tab stack" id="tab-led">
+      <div class="head">
+        <div>
+          <h1 data-name="led">LED strip</h1>
+          <div class="sub" id="ledSub">Menunggu data perangkat</div>
+        </div>
+        <label class="sw lg"><input type="checkbox" id="swLed" aria-label="Power LED strip"><span></span></label>
+      </div>
+
+      <div class="card col" style="gap:16px">
+        <div class="led-preview off" id="ledPreview"></div>
+        <div class="col" style="gap:10px">
+          <div class="slider-head"><label>Warna</label><span class="v num" id="colorHex">#FFFFFF</span></div>
+          <div class="colors" id="colorList"></div>
+        </div>
+        <div class="col" style="gap:6px">
+          <div class="slider-head"><label for="ledBr">Kecerahan</label><span class="v" id="ledBrVal">50%</span></div>
+          <input type="range" class="range" id="ledBr" min="0" max="100" value="50">
+        </div>
+        <div class="col" style="gap:6px">
+          <div class="slider-head"><label for="ledSpd">Kecepatan animasi</label><span class="v" id="ledSpdVal">50</span></div>
+          <input type="range" class="range" id="ledSpd" min="1" max="100" value="50">
+        </div>
+        <p class="note">Saat slider digeser, perintah dikirim paling sering sekali tiap 3 detik. Nilai terakhir tetap terkirim saat slider dilepas.</p>
+      </div>
+
+      <div class="card col">
+        <span class="card-title">Efek animasi</span>
+        <div class="fx" id="fxList"></div>
+      </div>
+
+      <div class="card col">
+        <div class="card-row"><span class="card-title">Jumlah LED</span><span class="note" id="ledMaxText">maks 300</span></div>
+        <div class="count-row">
+          <div class="field"><label for="ledCnt">Total LED di strip</label><input type="number" id="ledCnt" min="1" max="300" value="30" inputmode="numeric"></div>
+          <div class="field"><label for="ledAct">LED yang dinyalakan</label><input type="number" id="ledAct" min="1" max="30" value="30" inputmode="numeric"></div>
+        </div>
+        <p class="note">Ubah angka lalu tekan Enter atau ketuk di luar kotak. Nilai dikirim sekali.</p>
+
+        <div class="wiz" id="wizIdle">
+          <h4>Tidak tahu jumlah LED-nya?</h4>
+          <p>Pindai strip: LED akan menyala satu per satu dari awal. Tekan Stop saat LED paling ujung menyala.</p>
+          <button class="btn soft" id="scanStart">Pindai strip</button>
+        </div>
+        <div class="wiz" id="wizScan" hidden>
+          <h4>Memindai…</h4>
+          <div class="pos">#<span id="scanPos">0</span></div>
+          <p>Perhatikan strip. Tekan Stop saat LED terakhir menyala. Tidak perlu tepat, bisa dikoreksi setelahnya.</p>
+          <div class="btn-row">
+            <button class="btn danger" id="scanStop">Stop</button>
+            <button class="btn" id="scanCancel" style="background:var(--card)">Batal</button>
+          </div>
+        </div>
+        <div class="wiz" id="wizCal" hidden>
+          <h4>Koreksi posisi</h4>
+          <p>LED merah harus tepat di ujung strip. Kalau merahnya tidak terlihat, kurangi. Kalau masih ada LED gelap setelah merah, tambah.</p>
+          <div class="stepper">
+            <button class="btn" data-step="-10">−10</button>
+            <button class="btn" data-step="-1">−1</button>
+            <div class="cc" id="calCount">30</div>
+            <button class="btn" data-step="1">+1</button>
+            <button class="btn" data-step="10">+10</button>
+          </div>
+          <button class="btn primary block" id="scanDone">Selesai &amp; simpan</button>
+        </div>
+      </div>
+    </section>
+
+    <!-- =========================================================
+         TAB: SETELAN
+         ========================================================= -->
+    <section class="tab stack" id="tab-settings">
+      <div class="head">
+        <div>
+          <h1>Setelan</h1>
+          <div class="sub">Tersimpan di browser ini saja</div>
+        </div>
+      </div>
+
+      <div class="card col">
+        <span class="card-title">Tampilan</span>
+        <div class="seg" id="themeSeg">
+          <button data-theme="light">Terang</button>
+          <button data-theme="dark">Gelap</button>
+          <button data-theme="system">Ikuti sistem</button>
+        </div>
+        <div class="fields two">
+          <div class="field"><label for="nmRoom">Nama ruangan</label><input id="nmRoom" type="text" maxlength="30"></div>
+          <div class="field"><label for="nmUser">Nama sapaan</label><input id="nmUser" type="text" maxlength="20"></div>
+        </div>
+      </div>
+
+      <div class="list">
+        <details class="acc">
+          <summary>
+            <span class="ic-tile sm"><svg><use href="#i-tag"/></svg></span>
+            <span class="tb"><span class="rt">Nama perangkat</span><div class="rs">Ganti nama relay, dimmer, LED, dan kipas</div></span>
+            <svg class="chev"><use href="#i-chev"/></svg>
+          </summary>
+          <div class="body">
+            <div class="fields two">
+              <div class="field"><label for="nmR1">Relay 1</label><input id="nmR1" type="text" maxlength="20"></div>
+              <div class="field"><label for="nmR2">Relay 2</label><input id="nmR2" type="text" maxlength="20"></div>
+              <div class="field"><label for="nmPwm">Dimmer (PWM)</label><input id="nmPwm" type="text" maxlength="20"></div>
+              <div class="field"><label for="nmLed">LED strip</label><input id="nmLed" type="text" maxlength="20"></div>
+              <div class="field"><label for="nmFan">Kipas</label><input id="nmFan" type="text" maxlength="20"></div>
+            </div>
+            <button class="btn primary block" id="saveNames">Simpan nama</button>
+          </div>
+        </details>
+        <details class="acc">
+          <summary>
+            <span class="ic-tile sm"><svg><use href="#i-chip"/></svg></span>
+            <span class="tb"><span class="rt">Koneksi MQTT</span><div class="rs" id="mqttSum">Menyambungkan…</div></span>
+            <svg class="chev"><use href="#i-chev"/></svg>
+          </summary>
+          <div class="body">
+            <div class="fields">
+              <div class="field"><label for="cfgHost">Broker URL (WebSocket TLS)</label><input id="cfgHost" type="text" autocomplete="off" spellcheck="false" placeholder="wss://xxxx.hivemq.cloud:8884/mqtt"></div>
+              <div class="fields two">
+                <div class="field"><label for="cfgUser">Username</label><input id="cfgUser" type="text" autocomplete="off" spellcheck="false"></div>
+                <div class="field"><label for="cfgPass">Password</label><input id="cfgPass" type="password" autocomplete="off"></div>
+                <div class="field"><label for="cfgLamp">Topic dasar lampu</label><input id="cfgLamp" type="text" spellcheck="false" placeholder="home/lamp"></div>
+                <div class="field"><label for="cfgFan">Topic dasar kipas</label><input id="cfgFan" type="text" spellcheck="false" placeholder="home/fan"></div>
+              </div>
+            </div>
+            <div class="btn-row">
+              <button class="btn" id="cfgReset">Kembali ke default</button>
+              <button class="btn primary" id="cfgSave">Simpan &amp; sambungkan</button>
+            </div>
+          </div>
+        </details>
+      </div>
+
+      <div class="card col">
+        <p class="note">Menghapus tema, nama perangkat, warna favorit, dan setelan MQTT dari browser ini. Perangkat ESP32 tidak terpengaruh.</p>
+        <button class="btn danger block" id="wipeAll">Hapus semua data tersimpan</button>
+      </div>
+    </section>
+
+  </main>
+
+  <!-- ============ NAV ============ -->
+  <nav class="nav" aria-label="Navigasi utama">
+    <button class="nav-btn" data-tab="home" aria-label="Beranda"><svg><use href="#i-home"/></svg><span class="lbl">Beranda</span></button>
+    <button class="nav-btn" data-tab="lamp" aria-label="Lampu"><svg><use href="#i-bulb"/></svg><span class="lbl">Lampu</span></button>
+    <button class="nav-btn" data-tab="led" aria-label="LED Strip"><svg><use href="#i-strip"/></svg><span class="lbl">LED Strip</span></button>
+    <button class="nav-btn" data-tab="settings" aria-label="Setelan"><svg><use href="#i-gear"/></svg><span class="lbl">Setelan</span></button>
+  </nav>
+</div>
+
+<div class="toast" id="toast" role="status" aria-live="polite"></div>
+
+<script>
+(() => {
+  "use strict";
+
+  /* =========================================================
+     KONFIGURASI
+     ========================================================= */
+  const SLIDER_THROTTLE_MS = 3000;          // LED: jeda minimum publish (LED masih autosave NVS di firmware)
+  const BUSY_MS = SLIDER_THROTTLE_MS + 800; // LED: abaikan echo state selama user masih menggeser
+  const PWM_THROTTLE_MS = 250;              // PWM live: tidak menulis NVS, aman dikirim sering
+  const PWM_BUSY_MS = 1200;                 // PWM: abaikan echo state sebentar setelah menggeser
+  const PWM_SAVE_TIMEOUT_MS = 6000;         // batas tunggu konfirmasi pwm/saved
+
+  const DEFAULT_CFG = {
+    host: "wss://eaf1738eb99e4ccc80a8878baa885ac5.s1.eu.hivemq.cloud:8884/mqtt",
+    user: "AkmalIoT",
+    pass: "MQTTpass1",
+    topicLamp: "home/lamp",
+    topicFan: "home/fan"
+  };
+  const DEFAULT_NAMES = { room: "Kamar Akmal", user: "Akmal", r1: "Lampu utama", r2: "Lampu 2", pwm: "Dimmer", led: "LED strip", fan: "Kipas" };
+  const DEFAULT_COLORS = ["#ffffff", "#ffb35c", "#ff5f57", "#52c07c", "#4aa3ff", "#b07bff"];
+
+  const EFFECTS = [
+    ["solid", "Solid"], ["breathe", "Breathe"], ["rainbow", "Rainbow"], ["rainbow_chase", "Rainbow chase"],
+    ["color_wipe", "Color wipe"], ["theater_chase", "Theater chase"], ["comet", "Comet"], ["scanner", "Scanner"],
+    ["twinkle", "Twinkle"], ["confetti", "Confetti"], ["fire", "Fire"], ["running", "Running"], ["blink", "Blink"]
+  ];
+
+  /* =========================================================
+     LOCAL STORAGE (aman kalau diblokir / mode privat)
+     ========================================================= */
+  const PREFIX = "panda.dash.";
+  const store = {
+    get(k, d) { try { const v = localStorage.getItem(PREFIX + k); return v === null ? d : JSON.parse(v); } catch (e) { return d; } },
+    set(k, v) { try { localStorage.setItem(PREFIX + k, JSON.stringify(v)); } catch (e) {} },
+    wipe() {
+      try {
+        Object.keys(localStorage).filter(k => k.startsWith(PREFIX) || k.startsWith("kamarAkmal")).forEach(k => localStorage.removeItem(k));
+      } catch (e) {}
+    }
+  };
+  function legacy(k) { try { return localStorage.getItem(k); } catch (e) { return null; } }
+
+  // Ambil setelan dashboard lama kalau ada
+  function loadCfg() {
+    const saved = store.get("cfg", null);
+    if (saved) return Object.assign({}, DEFAULT_CFG, saved);
+    return {
+      host: legacy("kamarAkmalHost") || DEFAULT_CFG.host,
+      user: legacy("kamarAkmalUser") || DEFAULT_CFG.user,
+      pass: legacy("kamarAkmalPass") || DEFAULT_CFG.pass,
+      topicLamp: legacy("kamarAkmalTopicLamp") || DEFAULT_CFG.topicLamp,
+      topicFan: legacy("kamarAkmalTopicFan") || DEFAULT_CFG.topicFan
+    };
+  }
+
+  let cfg = loadCfg();
+  let names = Object.assign({}, DEFAULT_NAMES, store.get("names", {}));
+  let colors = store.get("colors", DEFAULT_COLORS.slice());
+  let lastPwm = store.get("lastPwm", 100);
+
+  /* =========================================================
+     STATE (dari perangkat)
+     ========================================================= */
+  const S = {
+    lampOnline: null,
+    r1: null, r2: null, pwm: null, pwmSaved: null,
+    led: { power: null, color: "#FFFFFF", brightness: 50, speed: 50, effect: "solid", count: 30, active: 30, max: 300, mode: "normal" },
+    onTime: null, offTime: null, onTime2: null, offTime2: null, version: null, devTime: null, lampUpdated: null,
+    fan: null, fanUptime: null, fanUpdated: null
+  };
+
+  /* =========================================================
+     UTIL
+     ========================================================= */
+  const $ = id => document.getElementById(id);
+  const root = document.documentElement;
+
+  function toast(msg) {
+    const t = $("toast");
+    t.textContent = msg;
+    t.classList.add("show");
+    clearTimeout(toast._t);
+    toast._t = setTimeout(() => t.classList.remove("show"), 2400);
+  }
+
+  function throttle(fn, ms) {
+    let last = 0, timer = null, lastArgs;
+    const t = (...args) => {
+      lastArgs = args;
+      const now = Date.now();
+      if (now - last >= ms) { last = now; fn(...args); }
+      else if (!timer) {
+        timer = setTimeout(() => { timer = null; last = Date.now(); fn(...lastArgs); }, ms - (now - last));
+      }
+    };
+    t.cancel = () => { clearTimeout(timer); timer = null; last = Date.now(); };
+    return t;
+  }
+
+  const busy = {};
+  const markBusy = k => { busy[k] = Date.now(); };
+  const isBusy = (k, ms = BUSY_MS) => Date.now() - (busy[k] || 0) < ms;
+
+  function fillRange(el) {
+    const min = +el.min || 0, max = +el.max || 100;
+    el.style.setProperty("--p", ((+el.value - min) / (max - min) * 100) + "%");
+  }
+
+  function clockNow() {
+    return new Date().toLocaleTimeString("id-ID", { hour: "2-digit", minute: "2-digit", second: "2-digit", hour12: false });
+  }
+
+  function clampInt(v, lo, hi) {
+    let n = Math.round(+v);
+    if (!Number.isFinite(n)) n = lo;
+    return Math.min(hi, Math.max(lo, n));
+  }
+
+  /* =========================================================
+     TEMA
+     ========================================================= */
+  let themePref = store.get("theme", legacy("kamarAkmalTheme") || "system");
+  const mql = window.matchMedia ? window.matchMedia("(prefers-color-scheme: dark)") : null;
+
+  function resolvedTheme() {
+    if (themePref === "system") return mql && mql.matches ? "dark" : "light";
+    return themePref;
+  }
+  function applyTheme() {
+    const t = resolvedTheme();
+    root.setAttribute("data-theme", t);
+    const meta = document.querySelector('meta[name="theme-color"]');
+    if (meta) meta.setAttribute("content", t === "dark" ? "#0C130F" : "#EFF4F0");
+    $("themeQuick").querySelector("use").setAttribute("href", t === "dark" ? "#i-sun" : "#i-moon");
+    document.querySelectorAll("#themeSeg button").forEach(b => b.classList.toggle("active", b.dataset.theme === themePref));
+  }
+  function setTheme(t) { themePref = t; store.set("theme", t); applyTheme(); }
+
+  if (mql && mql.addEventListener) mql.addEventListener("change", () => { if (themePref === "system") applyTheme(); });
+  $("themeQuick").addEventListener("click", () => setTheme(resolvedTheme() === "dark" ? "light" : "dark"));
+  document.querySelectorAll("#themeSeg button").forEach(b => b.addEventListener("click", () => setTheme(b.dataset.theme)));
+  applyTheme();
+
+  /* =========================================================
+     TAB
+     ========================================================= */
+  const TABS = ["home", "lamp", "led", "settings"];
+  function showTab(name) {
+    if (!TABS.includes(name)) name = "home";
+    document.querySelectorAll(".tab").forEach(s => s.classList.toggle("active", s.id === "tab-" + name));
+    document.querySelectorAll(".nav-btn").forEach(b => {
+      const on = b.dataset.tab === name;
+      b.classList.toggle("active", on);
+      if (on) b.setAttribute("aria-current", "page"); else b.removeAttribute("aria-current");
+    });
+    store.set("tab", name);
+    window.scrollTo({ top: 0 });
+  }
+  document.querySelectorAll(".nav-btn").forEach(b => b.addEventListener("click", () => showTab(b.dataset.tab)));
+  showTab(store.get("tab", "home"));
+
+  /* =========================================================
+     SAPAAN & NAMA
+     ========================================================= */
+  function renderGreeting() {
+    const h = new Date().getHours();
+    const part = h < 11 ? "pagi" : h < 15 ? "siang" : h < 18 ? "sore" : "malam";
+    $("greeting").textContent = "Selamat " + part;
+    $("userName").textContent = names.user;
+    $("heroRoom").textContent = names.room;
+  }
+
+  function renderNames() {
+    document.querySelectorAll("[data-name]").forEach(el => { el.textContent = names[el.dataset.name] || ""; });
+    document.title = names.room;
+    renderGreeting();
+  }
+
+  function fillNameForm() {
+    $("nmRoom").value = names.room; $("nmUser").value = names.user;
+    $("nmR1").value = names.r1; $("nmR2").value = names.r2; $("nmPwm").value = names.pwm;
+    $("nmLed").value = names.led; $("nmFan").value = names.fan;
+  }
+
+  $("saveNames").addEventListener("click", () => {
+    const pick = (id, key) => ($(id).value.trim() || DEFAULT_NAMES[key]);
+    names = {
+      room: pick("nmRoom", "room"), user: pick("nmUser", "user"),
+      r1: pick("nmR1", "r1"), r2: pick("nmR2", "r2"), pwm: pick("nmPwm", "pwm"),
+      led: pick("nmLed", "led"), fan: pick("nmFan", "fan")
+    };
+    store.set("names", names);
+    renderNames();
+    toast("Nama tersimpan");
+  });
+  // Nama ruangan & sapaan juga tersimpan saat kolomnya ditinggalkan
+  ["nmRoom", "nmUser"].forEach(id => $(id).addEventListener("change", () => $("saveNames").click()));
+
+  fillNameForm();
+  renderNames();
+  setInterval(renderGreeting, 60000);
+
+  /* =========================================================
+     MQTT
+     ========================================================= */
+  let client = null;
+  let T = buildTopics();
+
+  function buildTopics() {
+    const L = cfg.topicLamp.replace(/\/+$/, "") + "/";
+    const F = cfg.topicFan.replace(/\/+$/, "") + "/";
+    return { L, F };
+  }
+
+  function setConn(state, text) {
+    const p = $("connPill");
+    p.classList.remove("ok", "wait", "err");
+    if (state) p.classList.add(state);
+    $("connText").textContent = text;
+    $("mqttSum").textContent = text;
+  }
+
+  function pub(topic, payload) {
+    if (!client || !client.connected) { toast("Belum tersambung ke broker"); return false; }
+    client.publish(topic, String(payload));
+    return true;
+  }
+  const pubL = (suffix, payload) => pub(T.L + suffix, payload);
+  const pubF = (suffix, payload) => pub(T.F + suffix, payload);
+
+  function connect() {
+    if (typeof mqtt === "undefined") {
+      setConn("err", "Library MQTT gagal dimuat");
+      return;
+    }
+    if (client) { try { client.end(true); } catch (e) {} client = null; }
+    setConn("wait", "Menyambungkan…");
+
+    client = mqtt.connect(cfg.host, {
+      username: cfg.user,
+      password: cfg.pass,
+      clientId: "dash_" + Math.random().toString(16).slice(2, 10),
+      clean: true,
+      keepalive: 60,
+      reconnectPeriod: 3000,
+      connectTimeout: 10000,
+      protocolVersion: 4
+    });
+
+    client.on("connect", () => {
+      setConn("ok", "Tersambung");
+      client.subscribe([
+        T.L + "availability", T.L + "status",
+        T.L + "relay1/state", T.L + "relay2/state", T.L + "pwm/state", T.L + "pwm/saved",
+        T.L + "led/state", T.L + "led/scan_pos",
+        T.F + "status"
+      ]);
+      pubL("cmd", "/status");
+      pubF("cmd", "/status");
+    });
+    client.on("reconnect", () => setConn("wait", "Menyambung ulang…"));
+    client.on("close", () => setConn("err", "Terputus"));
+    client.on("error", e => {
+      setConn("err", /auth|password|user/i.test(e.message) ? "Login MQTT ditolak" : "Gagal tersambung");
+    });
+    client.on("message", onMessage);
+  }
+
+  function parseJSON(s) { try { return JSON.parse(s); } catch (e) { return null; } }
+
+  function onMessage(topic, payload) {
+    const msg = payload.toString();
+
+    // ---------- KIPAS ----------
+    if (topic === T.F + "status") {
+      const d = parseJSON(msg);
+      if (!d) return;
+      if (d.state !== undefined) S.fan = d.state === "ON";
+      if (d.uptime !== undefined) S.fanUptime = d.uptime;
+      S.fanUpdated = clockNow();
+      renderHome();
+      return;
+    }
+
+    if (!topic.startsWith(T.L)) return;
+    const t = topic.slice(T.L.length);
+
+    switch (t) {
+      case "availability":
+        S.lampOnline = msg === "online";
+        break;
+      case "relay1/state": S.r1 = msg === "ON"; break;
+      case "relay2/state": S.r2 = msg === "ON"; break;
+      case "pwm/state": {
+        const v = clampInt(msg, 0, 100);
+        S.pwm = v;
+        if (v > 0) { lastPwm = v; store.set("lastPwm", v); }
+        break;
+      }
+      case "pwm/saved": {
+        const v = clampInt(msg, 0, 100);
+        S.pwmSaved = v;
+        onPwmSavedMessage(v);
+        break;
+      }
+      case "led/scan_pos":
+        $("scanPos").textContent = msg;
+        return;
+      case "led/state": {
+        const d = parseJSON(msg);
+        if (!d) return;
+        Object.assign(S.led, {
+          power: d.power === "ON",
+          color: d.color || S.led.color,
+          brightness: d.brightness ?? S.led.brightness,
+          speed: d.speed ?? S.led.speed,
+          effect: d.effect || S.led.effect,
+          count: d.count ?? S.led.count,
+          active: d.active ?? S.led.active,
+          max: d.max ?? S.led.max,
+          mode: d.mode || S.led.mode
+        });
+        break;
+      }
+      case "status": {
+        const d = parseJSON(msg);
+        if (!d) return;
+        if (d.on_time) S.onTime = d.on_time;
+        if (d.off_time) S.offTime = d.off_time;
+        if (d.on_time2) S.onTime2 = d.on_time2;
+        if (d.off_time2) S.offTime2 = d.off_time2;
+        if (d.pwm_saved !== undefined && d.pwm_saved !== null) S.pwmSaved = clampInt(d.pwm_saved, 0, 100);   // opsional: firmware lama tidak punya
+        if (d.version) S.version = d.version;
+        if (d.time) S.devTime = d.time;
+        break;
+      }
+      default: return;
+    }
+    S.lampUpdated = clockNow();
+    renderLamp(); renderLed(); renderHome();
+  }
+
+  /* =========================================================
+     RENDER
+     ========================================================= */
+  function stateText(v, onText, offText) {
+    return v === null ? "Belum ada data" : (v ? onText : offText);
+  }
+  function setSwitch(id, v) { const el = $(id); if (el) el.checked = !!v; }
+  const fxLabel = id => (EFFECTS.find(e => e[0] === id) || [0, id])[1];
+  const timeRange = (a, b) => a ? "Nyala " + a + " · Mati " + b : "—";
+
+  function renderHome() {
+    const devs = [S.r1, S.r2, S.pwm !== null ? S.pwm > 0 : null, S.led.power, S.fan];
+    $("heroOn").textContent = devs.filter(Boolean).length;
+    document.querySelector(".hero .bulb").classList.toggle("on", S.r1 === true);   // hanya nyala kalau Lampu utama ON
+    $("hs1").textContent = timeRange(S.onTime, S.offTime);
+    $("hs2").textContent = timeRange(S.onTime2, S.offTime2);
+
+    const tile = (id, on) => $(id).classList.toggle("on", !!on);
+
+    tile("tileR1", S.r1); setSwitch("swR1Tile", S.r1);
+    $("stR1").textContent = stateText(S.r1, "Menyala", "Mati");
+
+    tile("tileR2", S.r2); setSwitch("swR2Tile", S.r2);
+    $("stR2").textContent = stateText(S.r2, "Menyala", "Mati");
+
+    const pwmOn = S.pwm !== null && S.pwm > 0;
+    tile("tilePwm", pwmOn); setSwitch("swPwmTile", pwmOn);
+    $("stPwm").textContent = S.pwm === null ? "—" : (pwmOn ? S.pwm + "%" : "Mati");
+    $("pwmBar").style.transform = "scaleX(" + ((S.pwm || 0) / 100) + ")";
+
+    tile("tileLed", S.led.power); setSwitch("swLedTile", S.led.power);
+    $("stLed").textContent = S.led.power === null ? "Belum ada data" : (S.led.power ? fxLabel(S.led.effect) : "Mati");
+    $("ledBar").style.background = ledGradient();
+    $("ledBar").parentNode.hidden = !S.led.power;
+
+    tile("tileFan", S.fan); setSwitch("swFanTile", S.fan);
+    $("stFan").textContent = S.fan === null ? "Belum ada data"
+      : (S.fan ? "Berputar" : "Mati") + (S.fanUptime ? " · aktif " + S.fanUptime : "");
+  }
+
+  function renderLamp() {
+    const av = $("lampAvail");
+    av.classList.remove("ok", "err");
+    if (S.lampOnline === true) av.classList.add("ok");
+    if (S.lampOnline === false) av.classList.add("err");
+    $("lampAvailText").textContent = S.lampOnline === null ? "—" : (S.lampOnline ? "Online" : "Offline");
+    $("lampSub").textContent = S.version ? "Firmware " + S.version + (S.devTime ? " · jam perangkat " + S.devTime : "") : "Menunggu data perangkat";
+
+    setSwitch("swR1", S.r1); setSwitch("swR2", S.r2);
+    $("rowR1").classList.toggle("on", !!S.r1);
+    $("rowR2").classList.toggle("on", !!S.r2);
+
+    if (S.pwm !== null && !isBusy("pwm", PWM_BUSY_MS)) {
+      $("pwmRange").value = S.pwm;
+      fillRange($("pwmRange"));
+      $("pwmBig").innerHTML = S.pwm + "<small>%</small>";
+      markPreset(S.pwm);
+    }
+    renderPwmSave();
+
+    syncSched();
+    $("fwVersion").textContent = S.version || "—";
+    $("devTime").textContent = S.devTime || "—";
+    $("lampUpdated").textContent = S.lampUpdated || "—";
+  }
+
+  // Nilai PWM yang sedang tampil: saat user menggeser pakai nilai slider, selain itu nilai dari perangkat.
+  function pwmShown() {
+    return isBusy("pwm", PWM_BUSY_MS) ? +$("pwmRange").value : S.pwm;
+  }
+
+  function renderPwmSave() {
+    const live = pwmShown(), saved = S.pwmSaved;
+    $("pwmSavedVal").textContent = saved === null ? "—" : saved + "%";
+    const dirty = live !== null && saved !== null && live !== saved;
+    $("pwmDirty").hidden = !dirty;
+    const btn = $("pwmSave");
+    btn.classList.toggle("primary", dirty);
+    if (!pwmSaving) { btn.disabled = false; btn.textContent = "Simpan"; }
+  }
+
+  function ledGradient() {
+    const L = S.led;
+    const rainbow = "linear-gradient(90deg,#ff5f57,#ffb35c,#f5e05a,#52c07c,#4aa3ff,#b07bff,#ff5f57)";
+    const fire = "linear-gradient(90deg,#7a1d0c,#e0431b,#ff9a2e,#ffd36b)";
+    return { rainbow, rainbow_chase: rainbow, confetti: rainbow, fire }[L.effect]
+      || "linear-gradient(90deg," + L.color + "," + L.color + ")";
+  }
+
+  function renderLed() {
+    const L = S.led;
+    setSwitch("swLed", L.power);
+    $("ledSub").textContent = L.power === null ? "Menunggu data perangkat"
+      : (L.power ? fxLabel(L.effect) + " · " + L.active + " LED menyala" : "Mati");
+    renderPreview();
+    $("colorHex").textContent = String(L.color).toUpperCase();
+    markColor(L.color);
+
+    if (!isBusy("ledBr")) { $("ledBr").value = L.brightness; fillRange($("ledBr")); $("ledBrVal").textContent = L.brightness + "%"; }
+    if (!isBusy("ledSpd")) { $("ledSpd").value = L.speed; fillRange($("ledSpd")); $("ledSpdVal").textContent = L.speed; }
+
+    document.querySelectorAll("#fxList button").forEach(b => b.classList.toggle("active", b.dataset.fx === L.effect));
+
+    $("ledCnt").max = L.max;
+    $("ledMaxText").textContent = "maks " + L.max;
+    if (document.activeElement !== $("ledCnt")) $("ledCnt").value = L.count;
+    $("ledAct").max = L.count;
+    if (document.activeElement !== $("ledAct")) $("ledAct").value = L.active;
+    $("calCount").textContent = L.count;
+
+    $("wizIdle").hidden = L.mode !== "normal";
+    $("wizScan").hidden = L.mode !== "scan";
+    $("wizCal").hidden = L.mode !== "calibrate";
+  }
+
+  function renderPreview() {
+    const L = S.led, p = $("ledPreview");
+    p.style.background = ledGradient();
+    p.style.opacity = L.power ? Math.max(.35, L.brightness / 100) : "";
+    p.classList.toggle("off", !L.power);
+  }
+
+  /* =========================================================
+     FILTER BERANDA
+     ========================================================= */
+  document.querySelectorAll("#chips .chip").forEach(c => c.addEventListener("click", () => {
+    const f = c.dataset.f;
+    document.querySelectorAll("#chips .chip").forEach(x => x.classList.toggle("active", x === c));
+    document.querySelectorAll(".tiles .tile").forEach(t => { t.hidden = f !== "all" && t.dataset.cat !== f; });
+  }));
+
+  /* =========================================================
+     KONTROL: TILE BERANDA
+     ========================================================= */
+  function bindSwitch(id, onChange) {
+    $(id).addEventListener("change", e => {
+      const want = e.target.checked;
+      if (!onChange(want)) e.target.checked = !want;   // gagal kirim -> kembalikan posisi
+    });
+  }
+
+  bindSwitch("swR1Tile", v => pubL("relay1/set", v ? "ON" : "OFF"));
+  bindSwitch("swR2Tile", v => pubL("relay2/set", v ? "ON" : "OFF"));
+  bindSwitch("swPwmTile", v => pubL("pwm/set", v ? (lastPwm || 100) : 0));
+  bindSwitch("swLedTile", v => pubL("led/power", v ? "ON" : "OFF"));
+  bindSwitch("swFanTile", v => pubF("cmd", v ? "/on" : "/off"));
+
+  $("allOn").addEventListener("click", () => pubL("cmd", "/on"));
+  $("allOff").addEventListener("click", () => pubL("cmd", "/off"));
+
+  /* =========================================================
+     KONTROL: LAMPU
+     ========================================================= */
+  bindSwitch("swR1", v => pubL("relay1/set", v ? "ON" : "OFF"));
+  bindSwitch("swR2", v => pubL("relay2/set", v ? "ON" : "OFF"));
+  $("lampStatus").addEventListener("click", () => {
+    const a = pubL("cmd", "/status"), b = pubF("cmd", "/status");
+    if (a || b) toast("Meminta status terkini…");
+  });
+
+  // Dimmer
+  function markPreset(v) {
+    document.querySelectorAll("#pwmPresets button").forEach(b => b.classList.toggle("active", +b.dataset.v === +v));
+  }
+  const sendPwm = throttle(v => pubL("pwm/set", v), PWM_THROTTLE_MS);
+  $("pwmRange").addEventListener("input", e => {
+    markBusy("pwm");
+    fillRange(e.target);
+    $("pwmBig").innerHTML = e.target.value + "<small>%</small>";
+    markPreset(e.target.value);
+    renderPwmSave();
+    sendPwm(e.target.value);
+  });
+  $("pwmRange").addEventListener("change", e => { markBusy("pwm"); sendPwm.cancel(); pubL("pwm/set", e.target.value); renderPwmSave(); });
+  document.querySelectorAll("#pwmPresets button").forEach(b => b.addEventListener("click", () => {
+    const v = b.dataset.v;
+    $("pwmRange").value = v; fillRange($("pwmRange"));
+    $("pwmBig").innerHTML = v + "<small>%</small>";
+    markPreset(v); markBusy("pwm"); sendPwm.cancel();
+    pubL("pwm/set", v);
+    renderPwmSave();
+  }));
+
+  // Simpan PWM ke perangkat (NVS). Dianggap berhasil hanya setelah pwm/saved kembali dengan nilai yang sama.
+  let pwmSaving = false, pwmPending = null, pwmSaveTimer = null;
+
+  function finishPwmSave() {
+    pwmSaving = false; pwmPending = null;
+    clearTimeout(pwmSaveTimer); pwmSaveTimer = null;
+    renderPwmSave();
+  }
+
+  function onPwmSavedMessage(v) {
+    if (!pwmSaving) return;
+    if (v === pwmPending) {
+      finishPwmSave();
+      toast("Tersimpan: " + v + "%");
+    }
+  }
+
+  $("pwmSave").addEventListener("click", () => {
+    if (pwmSaving) return;
+    const want = clampInt($("pwmRange").value, 0, 100);
+    sendPwm.cancel();
+    // pastikan output perangkat sama dengan slider sebelum menyimpan
+    if (S.pwm !== want && !pubL("pwm/set", want)) return;
+    if (!pubL("pwm/save", "SAVE")) return;
+    pwmSaving = true; pwmPending = want;
+    const btn = $("pwmSave");
+    btn.disabled = true; btn.textContent = "Menyimpan…";
+    pwmSaveTimer = setTimeout(() => {
+      if (!pwmSaving) return;
+      finishPwmSave();
+      toast("Belum ada konfirmasi dari perangkat. Cek koneksi atau firmware 3.3.0.");
+    }, PWM_SAVE_TIMEOUT_MS);
+  });
+
+  // Jadwal: satu kartu per lampu, masing-masing punya tombol simpan (perintah sama seperti versi lama)
+  const SCHED = [
+    { n: 1, on: "onTime",  off: "offTime",  cur: "schedCurrent",  badge: "schedDirty1", dur: "dur1", save: "saveSched1", key: "r1", cmd: "/ubah-jadwal",  fOn: "on_time",  fOff: "off_time",  dev: () => [S.onTime, S.offTime],   seen: null },
+    { n: 2, on: "onTime2", off: "offTime2", cur: "schedCurrent2", badge: "schedDirty2", dur: "dur2", save: "saveSched2", key: "r2", cmd: "/ubah-jadwal2", fOn: "on_time2", fOff: "off_time2", dev: () => [S.onTime2, S.offTime2], seen: null }
+  ];
+  const toMin = s => { const [h, m] = String(s).split(":").map(Number); return h * 60 + m; };
+  const fmtMin = m => { m = ((m % 1440) + 1440) % 1440; return String(Math.floor(m / 60)).padStart(2, "0") + ":" + String(m % 60).padStart(2, "0"); };
+
+  function durText(on, off) {
+    if (!on || !off) return "Isi jam nyala dan mati";
+    if (on === off) return "Jam nyala dan mati sama, cek lagi";
+    const diff = (toMin(off) - toMin(on) + 1440) % 1440;
+    const h = Math.floor(diff / 60), m = diff % 60;
+    return "Menyala " + (h ? h + " jam" : "") + (h && m ? " " : "") + (m ? m + " menit" : "") + (toMin(off) < toMin(on) ? ", lewat tengah malam" : "");
+  }
+
+  function renderSchedRow(s) {
+    const on = $(s.on).value, off = $(s.off).value, [dOn, dOff] = s.dev();
+    $(s.dur).textContent = durText(on, off);
+    $(s.badge).hidden = !(dOn && (on !== dOn || off !== dOff));
+    $(s.cur).textContent = dOn ? dOn + " – " + dOff : "—";
+  }
+
+  // Isi kotak jam dari perangkat hanya saat nilai di perangkat berubah,
+  // supaya jam yang sedang diedit tidak tertimpa pesan MQTT lain.
+  function syncSched() {
+    SCHED.forEach(s => {
+      const [dOn, dOff] = s.dev();
+      const key = dOn ? dOn + "|" + dOff : null;
+      if (key && key !== s.seen) { s.seen = key; $(s.on).value = dOn; $(s.off).value = dOff; }
+      renderSchedRow(s);
+    });
+  }
+
+  SCHED.forEach(s => {
+    [s.on, s.off].forEach(id => $(id).addEventListener("input", () => renderSchedRow(s)));
+    $(s.save).addEventListener("click", () => {
+      const on = $(s.on).value, off = $(s.off).value;
+      if (!on || !off) { toast("Isi kedua jam dulu"); return; }
+      if (on === off) { toast("Jam nyala dan mati tidak boleh sama"); return; }
+      if (!pubL("cmd", JSON.stringify({ cmd: s.cmd, [s.fOn]: on, [s.fOff]: off }))) return;
+      toast("Jadwal " + names[s.key] + " dikirim: " + on + " – " + off);
+      setTimeout(() => pubL("cmd", "/status"), 700);   // minta status supaya "Aktif di perangkat" ikut berubah
+    });
+  });
+
+  // tombol geser 15 menit
+  document.querySelectorAll(".nudge button").forEach(b => b.addEventListener("click", () => {
+    const inp = $(b.dataset.t);
+    inp.value = fmtMin((inp.value ? toMin(inp.value) : 18 * 60) + (+b.dataset.d));
+    const s = SCHED.find(x => x.on === b.dataset.t || x.off === b.dataset.t);
+    renderSchedRow(s);
+  }));
+
+  $("copySched").addEventListener("click", () => {
+    $("onTime2").value = $("onTime").value;
+    $("offTime2").value = $("offTime").value;
+    renderSchedRow(SCHED[1]);
+    toast("Jam disalin. Tekan Simpan jadwal untuk mengirim.");
+  });
+
+  // jadwal di kartu hijau Beranda: ketuk untuk loncat ke kartu jadwal
+  document.querySelector(".hero .sched").addEventListener("click", () => {
+    showTab("lamp");
+    setTimeout(() => $("schedCard1").scrollIntoView({ behavior: "smooth", block: "start" }), 60);
+  });
+
+  /* =========================================================
+     KONTROL: LED STRIP
+     ========================================================= */
+  bindSwitch("swLed", v => pubL("led/power", v ? "ON" : "OFF"));
+
+  // Warna favorit (disimpan di browser)
+  function renderColors() {
+    const box = $("colorList");
+    box.innerHTML = "";
+    colors.forEach(c => {
+      const b = document.createElement("button");
+      b.className = "cdot";
+      b.style.background = c;
+      b.dataset.c = c.toLowerCase();
+      b.setAttribute("aria-label", "Warna " + c);
+      b.addEventListener("click", () => sendColor(c));
+      box.appendChild(b);
+    });
+    const pick = document.createElement("label");
+    pick.className = "cpick";
+    pick.title = "Pilih warna lain";
+    pick.innerHTML = '<svg><use href="#i-plus"/></svg><input type="color" aria-label="Pilih warna lain">';
+    const inp = pick.querySelector("input");
+    inp.value = String(S.led.color).toLowerCase();
+    inp.addEventListener("change", e => {
+      const c = e.target.value.toLowerCase();
+      colors = [c].concat(colors.filter(x => x.toLowerCase() !== c)).slice(0, 7);
+      store.set("colors", colors);
+      renderColors();
+      sendColor(c);
+    });
+    box.appendChild(pick);
+    markColor(S.led.color);
+  }
+  function markColor(c) {
+    const lc = String(c).toLowerCase();
+    document.querySelectorAll("#colorList .cdot").forEach(b => b.classList.toggle("active", b.dataset.c === lc));
+  }
+  function sendColor(c) {
+    if (pubL("led/color", c)) {
+      S.led.color = c.toUpperCase();
+      $("colorHex").textContent = S.led.color;
+      markColor(c); renderPreview(); renderHome();
+    }
+  }
+
+  // Kecerahan & kecepatan: slider, publish paling sering tiap 3 detik
+  const sendBr = throttle(v => pubL("led/brightness", v), SLIDER_THROTTLE_MS);
+  $("ledBr").addEventListener("input", e => {
+    markBusy("ledBr"); fillRange(e.target);
+    $("ledBrVal").textContent = e.target.value + "%";
+    S.led.brightness = +e.target.value; renderPreview();
+    sendBr(e.target.value);
+  });
+  $("ledBr").addEventListener("change", e => { markBusy("ledBr"); sendBr.cancel(); pubL("led/brightness", e.target.value); });
+
+  const sendSpd = throttle(v => pubL("led/speed", v), SLIDER_THROTTLE_MS);
+  $("ledSpd").addEventListener("input", e => {
+    markBusy("ledSpd"); fillRange(e.target);
+    $("ledSpdVal").textContent = e.target.value;
+    sendSpd(e.target.value);
+  });
+  $("ledSpd").addEventListener("change", e => { markBusy("ledSpd"); sendSpd.cancel(); pubL("led/speed", e.target.value); });
+
+  // Efek
+  (function buildFx() {
+    const box = $("fxList");
+    EFFECTS.forEach(([id, label]) => {
+      const b = document.createElement("button");
+      b.dataset.fx = id;
+      b.textContent = label;
+      b.addEventListener("click", () => {
+        if (pubL("led/effect", id)) {
+          S.led.effect = id;
+          document.querySelectorAll("#fxList button").forEach(x => x.classList.toggle("active", x === b));
+          renderPreview(); renderHome();
+        }
+      });
+      box.appendChild(b);
+    });
+  })();
+
+  // Jumlah LED: kotak angka, kirim sekali
+  function commitCount() {
+    const n = clampInt($("ledCnt").value, 1, S.led.max || 300);
+    $("ledCnt").value = n;
+    if (pubL("led/count", n)) {
+      S.led.count = n;
+      $("ledAct").max = n;
+      if (+$("ledAct").value > n) $("ledAct").value = n;
+    }
+  }
+  function commitActive() {
+    const n = clampInt($("ledAct").value, 1, S.led.count || 300);
+    $("ledAct").value = n;
+    pubL("led/active", n);
+  }
+  $("ledCnt").addEventListener("change", commitCount);
+  $("ledAct").addEventListener("change", commitActive);
+  $("ledCnt").addEventListener("keydown", e => { if (e.key === "Enter") e.target.blur(); });
+  $("ledAct").addEventListener("keydown", e => { if (e.key === "Enter") e.target.blur(); });
+
+  // Wizard pindai
+  $("scanStart").addEventListener("click", () => { $("scanPos").textContent = "0"; pubL("led/scan", "START"); });
+  $("scanStop").addEventListener("click", () => pubL("led/scan", "STOP"));
+  $("scanCancel").addEventListener("click", () => pubL("led/scan", "CANCEL"));
+  $("scanDone").addEventListener("click", () => pubL("led/scan", "DONE"));
+  document.querySelectorAll("[data-step]").forEach(b => b.addEventListener("click", () => {
+    const n = clampInt(S.led.count + (+b.dataset.step), 1, S.led.max || 300);
+    if (pubL("led/count", n)) { S.led.count = n; $("calCount").textContent = n; }
+  }));
+
+  /* =========================================================
+     SETELAN MQTT
+     ========================================================= */
+  function fillCfgForm() {
+    $("cfgHost").value = cfg.host; $("cfgUser").value = cfg.user; $("cfgPass").value = cfg.pass;
+    $("cfgLamp").value = cfg.topicLamp; $("cfgFan").value = cfg.topicFan;
+  }
+  $("cfgSave").addEventListener("click", () => {
+    const host = $("cfgHost").value.trim();
+    if (!/^wss?:\/\//i.test(host)) { toast("Broker URL harus diawali wss://"); return; }
+    cfg = {
+      host,
+      user: $("cfgUser").value.trim(),
+      pass: $("cfgPass").value,
+      topicLamp: $("cfgLamp").value.trim() || DEFAULT_CFG.topicLamp,
+      topicFan: $("cfgFan").value.trim() || DEFAULT_CFG.topicFan
+    };
+    store.set("cfg", cfg);
+    T = buildTopics();
+    toast("Setelan disimpan, menyambungkan ulang…");
+    connect();
+  });
+  $("cfgReset").addEventListener("click", () => {
+    cfg = Object.assign({}, DEFAULT_CFG);
+    store.set("cfg", cfg);
+    fillCfgForm();
+    T = buildTopics();
+    toast("Kembali ke setelan default");
+    connect();
+  });
+  $("wipeAll").addEventListener("click", () => {
+    if (!confirm("Hapus semua data dashboard yang tersimpan di browser ini?")) return;
+    store.wipe();
+    location.reload();
+  });
+
+  /* =========================================================
+     INIT
+     ========================================================= */
+  fillCfgForm();
+  renderColors();
+  ["pwmRange", "ledBr", "ledSpd"].forEach(id => fillRange($(id)));
+  renderHome(); renderLamp(); renderLed();
+  connect();
+})();
+</script>
+</body>
+</html>
